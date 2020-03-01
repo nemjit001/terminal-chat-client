@@ -9,13 +9,24 @@ class CircularLineBuffer
 private:
     std::mutex buffer_mtx;
     char *buffer;
-    int start_ptr, curr_ptr;
+    int buffer_size;
+    int start, count;
+
+    bool _write(const char *chars, int n_chars);
+    std::string _read();
+    int getShiftedIndex(int index);
 public:
     CircularLineBuffer();
     ~CircularLineBuffer();
 
-    bool write(std::string chars, size_t n_chars);
+    bool write(const char *chars, int n_chars);
     std::string read();
+    int nFree();
+    bool isFull();
+    bool isEmpty();
+    int nextFreeIndex();
+    int findNewline();
+    bool hasLine();
 };
 
 

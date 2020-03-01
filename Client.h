@@ -4,6 +4,7 @@
 #include "socket.h"
 #include "CircularLineBuffer.h"
 #include <thread>
+#include <iostream>
 
 #ifndef _WIN32
     #include <pthread.h>
@@ -14,7 +15,7 @@ class Client
 private:
     bool stop;
     SOCKET clientSocket;
-    CircularLineBuffer inputBuffer, outputBuffer;
+    CircularLineBuffer *inputBuffer, *outputBuffer;
     std::thread inputThread, outputThread;
 
     inline void startThreads()
@@ -59,8 +60,6 @@ private:
         }
     }
 
-    static int readFromStdin();
-    static int readFromSocket();
 public:
     Client();
     ~Client();
@@ -68,7 +67,9 @@ public:
     int step();
     bool isStopped();
     void setStopped(bool val);
-    bool connect();
+    bool connect_client();
+    int readFromStdin();
+    int readFromSocket();
 };
 
 

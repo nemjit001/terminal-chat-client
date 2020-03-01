@@ -9,7 +9,8 @@ int main(int argc, char **argv)
     std::cout << "Starting client..." << std::endl;
     Client *client = new Client();
     std::cout << "Client started!" << std::endl;
-    if (client->connect())
+
+    if (client->connect_client())
     {
         std::cout << "Client connected!" << std::endl;
     }
@@ -20,7 +21,6 @@ int main(int argc, char **argv)
         delete client;
         return 1;
     }
-    
 
     while(!client->isStopped() && client->step() == 0)
     {
@@ -29,6 +29,5 @@ int main(int argc, char **argv)
 
     std::cout << "Stopping client..." << std::endl;
     delete client;
-    std::cout << "Exit successful!" << std::endl;
     return 0;
 }
