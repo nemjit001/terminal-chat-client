@@ -1,22 +1,5 @@
 #include "Client.h"
 
-int Client::readFromStdin()
-{
-    std::string userInput;
-    getline(std::cin, userInput);
-
-    userInput += '\n';
-
-    if (this->inputBuffer->write(userInput.c_str(), userInput.length())) return userInput.length();
-
-    return -1;
-}
-
-int Client::readFromSocket()
-{
-    return 1;
-}
-
 Client::Client()
 {
     this->inputBuffer = new CircularLineBuffer();
@@ -36,6 +19,29 @@ Client::~Client()
     sock_quit();
 }
 
+int Client::readFromStdin()
+{
+    std::string userInput;
+    getline(std::cin, userInput);
+
+    userInput += '\n';
+
+    if (this->inputBuffer->write(userInput.c_str(), userInput.length())) return userInput.length();
+
+    return -1;
+}
+
+int Client::readFromSocket()
+{
+    size_t buffer_size = 4096;
+    char *data = (char *)calloc(buffer_size, sizeof(char));
+    if (recv(this->clientSocket, data, buffer_size, 0) != 0) return -1;
+
+    if (this->outputBuffer->write(data, strlen(data))) return strlen(data);
+
+    return -1;
+}
+
 int Client::step()
 {
     std::string userInput = this->inputBuffer->read();
@@ -46,6 +52,7 @@ int Client::step()
     }
 
     send(this->clientSocket, userInput.c_str(), userInput.length(), 0);
+    std::cout << this->outputBuffer->read();
     
     return 0;
 }
@@ -64,8 +71,8 @@ bool Client::connect_client()
 {
     addrinfo hints;
     addrinfo *results;
-    char *hostname = "127.0.0.1";
-    char *service = "1337";
+    const char *hostname = "127.0.0.1";
+    const char *service = "1337";
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_protocol = IPPROTO_TCP;
