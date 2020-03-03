@@ -27,7 +27,7 @@ int main(int argc, char **argv)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    std::cout << "Stopping client..." << std::endl;
+    std::cout << "Stopping client..." << std::endl << "Press [Enter] to exit..." << std::endl;
     delete client;
     return 0;
 }

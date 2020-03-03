@@ -5,18 +5,18 @@ Client::Client()
     this->inputBuffer = new CircularLineBuffer();
     this->outputBuffer = new CircularLineBuffer();
     this->stop = false;
-    this->startThreads();
 }
 
 Client::~Client()
 {
+    sock_close(this->clientSocket);
+    sock_quit();
+
+    this->setStopped(true);
     this->stopThreads();
 
     delete this->inputBuffer;
     delete this->outputBuffer;
-
-    sock_close(this->clientSocket);
-    sock_quit();
 }
 
 int Client::readFromStdin()
@@ -35,9 +35,10 @@ int Client::readFromSocket()
 {
     size_t buffer_size = 4096;
     char *data = (char *)calloc(buffer_size, sizeof(char));
-    if (recv(this->clientSocket, data, buffer_size, 0) != 0) return -1;
+    int bytesReceived = recv(this->clientSocket, data, buffer_size, 0);
+    if (bytesReceived <= 0) return -1;
 
-    if (this->outputBuffer->write(data, strlen(data))) return strlen(data);
+    if (this->outputBuffer->write(data, bytesReceived)) return bytesReceived;
 
     return -1;
 }
@@ -46,7 +47,9 @@ int Client::step()
 {
     std::string userInput = this->inputBuffer->read();
 
-    if (!sock_valid(this->clientSocket))
+    if (!sock_valid(this->clientSocket)) return -1;
+
+    if (userInput.compare("!quit\n") == 0)
     {
         return -1;
     }
@@ -85,13 +88,13 @@ bool Client::connect_client()
 
     this->clientSocket = socket(results->ai_family, results->ai_socktype, results->ai_protocol);
 
-    try_connect:
-    if (connect(this->clientSocket, results->ai_addr, results->ai_addrlen) != 0)
+    while (connect(this->clientSocket, results->ai_addr, results->ai_addrlen) != 0)
     {
         std::cout << "retrying connection..." << std::endl;
-        goto try_connect;
     }
     
     freeaddrinfo(results);
+
+    this->startThreads();
     return true;
 }

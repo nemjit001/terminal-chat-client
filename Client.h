@@ -43,7 +43,7 @@ private:
             auto res = this->readFromStdin();
             if (res < 0)
             {
-                this->stop = true;
+                this->setStopped(true);
             }
         }
     }
@@ -55,7 +55,7 @@ private:
             auto res = this->readFromSocket();
             if (res <= 0)
             {
-                this->stop = true;
+                this->setStopped(true);
             }
         }
     }
