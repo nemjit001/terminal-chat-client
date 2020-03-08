@@ -169,24 +169,37 @@ bool Client::connect_client()
 {
     addrinfo hints;
     addrinfo *results;
-    const char *hostname = "127.0.0.1";
-    const char *service = "1337";
+    std::string hostname;
+    std::string service;
     char buffer[4096];
+
+    std::cout << "Enter hostname and port in the format <hostname> <port>" << std::endl;
+    std::cin >> hostname >> service;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_protocol = IPPROTO_TCP;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_family = AF_INET;
     
-    if (sock_init() != 0) return false;
+    if (sock_init() != 0)
+    {
+        this->startThreads();
+        return false;
+    }
 
-    if (getaddrinfo(hostname, service, &hints, &results) != 0) return false;
+    if (getaddrinfo(hostname.c_str(), service.c_str(), &hints, &results) != 0) return false;
 
     this->clientSocket = socket(results->ai_family, results->ai_socktype, results->ai_protocol);
 
-    while (connect(this->clientSocket, results->ai_addr, results->ai_addrlen) != 0)
+    for (int i = 0; i < 5 && connect(this->clientSocket, results->ai_addr, results->ai_addrlen) != 0; i++)
     {
         std::cout << "retrying connection..." << std::endl;
+        if (i == 4)
+        {
+            std::cout << "Connecting failed, did you enter the hostname and port correctly?" << std::endl;
+            this->startThreads();
+            return false;
+        }
     }
     
     if (recv(this->clientSocket, buffer, 4096, 0) < 0) return false;
@@ -206,6 +219,7 @@ bool Client::connect_client()
     std::cout << buffer;
 
     freeaddrinfo(results);
+
     this->startThreads();
 
     return true;

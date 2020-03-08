@@ -12,7 +12,6 @@ int main(int argc, char **argv)
 
     if (!client->connect_client())
     {
-        std::cout << "Connecting failed :(" << std::endl;
         client->setStopped(true);
         delete client;
         return 1;
