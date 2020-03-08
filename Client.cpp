@@ -43,20 +43,115 @@ int Client::readFromSocket()
     return -1;
 }
 
-int Client::step()
+int Client::handleInput(std::string input)
 {
-    std::string userInput = this->inputBuffer->read();
+    std::string output;
 
     if (!sock_valid(this->clientSocket)) return -1;
 
-    if (userInput.compare("!quit\n") == 0)
+    if (std::regex_match(input, std::regex("!quit[\\w\\d\\s\\W\\D\\S]*")))
     {
+        output = "QUIT\n";
+        send(this->clientSocket, output.c_str(), output.length(), 0);
         return -1;
     }
+    else if (std::regex_match(input, std::regex("@[\\w\\d\\s\\W\\D\\S]*")))
+    {
+        output = "SEND " + input.substr(1);
+    }
+    else if (std::regex_match(input, std::regex("!who[\\w\\d\\s\\W\\D\\S]*")))
+    {
+        output = "WHO\n";
+    }
+    else if (std::regex_match(input, std::regex("!help[\\w\\d\\s\\W\\D\\S]*")))
+    {
+        std::cout <<
+        "--------------------------------------------------------------------------"
+        << std::endl <<
+        "Commands available:"
+        << std::endl <<
+        "!who\t\t|\tlists all connected users"
+        << std::endl <<
+        "@<username>\t|\tsend a message to another user (you can't message yourself)"
+        << std::endl <<
+        "!quit\t\t|\texit the chat program"
+        << std::endl <<
+        "!help\t\t|\tdisplay this help"
+        << std::endl <<
+        "--------------------------------------------------------------------------"
+        << std::endl;
+        return 0;
+    }
 
-    send(this->clientSocket, userInput.c_str(), userInput.length(), 0);
-    std::cout << this->outputBuffer->read();
-    
+    if (send(this->clientSocket, output.c_str(), output.length(), 0) < 0) return -1;
+
+    return 0;
+}
+
+int Client::handleResponse(std::string data)
+{
+    if (std::regex_match(data, std::regex("BAD-RQST-HDR[\\w\\d\\s\\W\\D\\S]*")))
+    {
+        std::cout << "Error connecting to server" << std::endl;
+    }
+    else if (std::regex_match(data, std::regex("WHO-OK[\\w\\d\\s\\W\\D\\S]*")))
+    {
+        std::cout << "Connected users: " << data.substr(7);
+    }
+    else if (std::regex_match(data, std::regex("DELIVERY[\\w\\d\\s\\W\\D\\S]*")))
+    {
+        std::string username, message;
+        int startNameIndex = 0, endNameIndex = 0;
+
+        for (int i = 0; i < data.length(); i++)
+        {
+            if (data.at(i) == ' ')
+            {
+                if (startNameIndex == 0)
+                    startNameIndex = i;
+                else if (endNameIndex == 0)
+                    endNameIndex = i;
+                else
+                    break;
+            }
+        }
+
+        username = data.substr(startNameIndex + 1, endNameIndex - startNameIndex - 1);
+        message = data.substr(endNameIndex + 1);
+
+        std::cout << "[" << username << "] " << message;
+    }
+    else if (std::regex_match(data, std::regex("SEND-OK[\\w\\d\\s\\W\\D\\S]*")))
+    {
+        std::cout << "Message sent" << std::endl;
+    }
+    else if (std::regex_match(data, std::regex("SEND-FAIL[\\w\\d\\s\\W\\D\\S]*")))
+    {
+        std::cout << "Failed to send message";
+    }
+    else
+    {
+        std::cout << data;
+        return 0;
+    }
+
+    return 0;
+}
+
+int Client::step()
+{
+    std::string input = this->inputBuffer->read();
+    if (input != "")
+    {
+        if (this->handleInput(input) != 0) return -1;
+    }
+
+    std::string data = this->outputBuffer->read();
+    if (data != "");
+    {
+        if (this->handleResponse(data) != 0) return -1;
+    }
+
     return 0;
 }
 
@@ -76,6 +171,7 @@ bool Client::connect_client()
     addrinfo *results;
     const char *hostname = "127.0.0.1";
     const char *service = "1337";
+    char buffer[4096];
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_protocol = IPPROTO_TCP;
@@ -93,8 +189,61 @@ bool Client::connect_client()
         std::cout << "retrying connection..." << std::endl;
     }
     
-    freeaddrinfo(results);
+    if (recv(this->clientSocket, buffer, 4096, 0) < 0) return false;
 
+    while (!this->login())
+    {
+        this->clientSocket = socket(results->ai_family, results->ai_socktype, results->ai_protocol);
+
+        while (connect(this->clientSocket, results->ai_addr, results->ai_addrlen) != 0)
+        {
+            std::cout << "retrying connection..." << std::endl;
+        }
+        
+        if (recv(this->clientSocket, buffer, 4096, 0) < 0) return false;
+    }
+
+    std::cout << buffer;
+
+    freeaddrinfo(results);
     this->startThreads();
+
+    return true;
+}
+
+bool Client::login() {
+    std::string username;
+    std::string login_message;
+    std::string ok_message;
+    char buffer[4096];
+
+    std::cout << "Enter your username: ";
+    std::cin >> username;
+    
+    memset(buffer, 0, 4096);
+
+    login_message = "HELLO-FROM " + username + "\n";
+    ok_message = "HELLO " + username + "\n";
+
+    send(this->clientSocket, login_message.c_str(), login_message.length(), 0);
+    if (recv(this->clientSocket, buffer, 4096, 0) < 0) return false;
+
+    if (strcmp(buffer, "FAIL-TAKEN\n") == 0)
+    {
+        std::cout << "Username already taken, try again!" << std::endl;
+        return false;
+    }
+
+    if (strcmp(buffer, "FAIL-INVALID\n") == 0)
+    {
+        std::cout << "Username invalid, try again!" << std::endl;
+        return false;
+    }
+
+    if (strcmp(buffer, ok_message.c_str()) == 0)
+    {
+        std::cout << "You have been logged in!" << std::endl;
+    }
+
     return true;
 }

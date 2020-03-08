@@ -10,11 +10,7 @@ int main(int argc, char **argv)
     Client *client = new Client();
     std::cout << "Client started!" << std::endl;
 
-    if (client->connect_client())
-    {
-        std::cout << "Client connected!" << std::endl;
-    }
-    else
+    if (!client->connect_client())
     {
         std::cout << "Connecting failed :(" << std::endl;
         client->setStopped(true);

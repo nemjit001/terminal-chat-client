@@ -5,6 +5,7 @@
 #include "CircularLineBuffer.h"
 #include <thread>
 #include <iostream>
+#include <regex>
 
 #ifndef _WIN32
     #include <pthread.h>
@@ -70,6 +71,9 @@ public:
     bool connect_client();
     int readFromStdin();
     int readFromSocket();
+    bool login();
+    int handleInput(std::string input);
+    int handleResponse(std::string input);
 };
 
 
