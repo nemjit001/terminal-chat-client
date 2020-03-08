@@ -123,11 +123,11 @@ int Client::handleResponse(std::string data)
     }
     else if (std::regex_match(data, std::regex("SEND-OK[\\w\\d\\s\\W\\D\\S]*")))
     {
-        std::cout << "Message sent" << std::endl;
+        return 0;
     }
     else if (std::regex_match(data, std::regex("SEND-FAIL[\\w\\d\\s\\W\\D\\S]*")))
     {
-        std::cout << "Failed to send message";
+        std::cout << "Failed to send message, this user does not exist..." << std::endl;
     }
     else
     {
